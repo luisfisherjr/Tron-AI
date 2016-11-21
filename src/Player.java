@@ -474,7 +474,7 @@ class Player {
 
         unreachable.addAll(neighbors.keySet());
         unreachable.removeAll(reachablePlayerNodes);
-        for(Set<Node> enemyNodes: reachableEnemyNodes) unreachable.removeAll(enemyNodes);
+//        for(Set<Node> enemyNodes: reachableEnemyNodes) unreachable.removeAll(enemyNodes);
 
         for(Node node: neighbors.keySet()) {
 
