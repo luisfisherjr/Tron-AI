@@ -197,7 +197,7 @@ class Player {
 
                 //showVoronoiDiagram(); // used to display voronoi diagram layer
 
-                setCost(playerGraph, player, enemyGraphs, reachableEnemies, 1, evaluated);
+                setCost(playerGraph, player, enemyGraphs, reachableEnemies, 2, evaluated);
                 //alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
 
                 System.err.println("CURRENT-POS:" + player);
@@ -211,7 +211,7 @@ class Player {
 
                 //showFreeSpaces(); // show how many open spaces are around node
                 //showSpaceValue(); // show if node is empty or a players wall
-                //showCost(); // show cost given to all nodes
+                showCost(); // show cost given to all nodes
             }
             else {
 
@@ -362,8 +362,6 @@ class Player {
             evaluated.add(child);
             childGraph = newGraph(child, enemies);
 
-            setCost(childGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
-
             for(Node e: enemies) if  (childGraph.keySet().contains(e)) divider++;
 
             voronoiDiagramLayer(childGraph, child, enemyGraphs, enemies, evaluated);
@@ -375,6 +373,8 @@ class Player {
             child.cost = nodesCloserToPlayer + (childGraph.size() - divider) / divider;
             Node temp = nodes.get(child.x + child.y * WIDTH);
             temp.cost = child.cost;
+
+            setCost(childGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
             temp.value = -1;
             child.value = -1;
         }
@@ -382,26 +382,24 @@ class Player {
 
     // used in voronoiDiagramLayer to calculate distance from player/enemy
     public static void voronoiDistanceLayer(Map<Node, List<Node>> playerGraph,
-                                            List<Map<Node, List<Node>>> enemyGraphs, List<Node> evaluated) {
+                                            Map<Node, List<Node>> enemyGraph, List<Node> evaluated) {
 
-        // put in sets into list and then sorts
-        Node[] playerNodes = new Node[playerGraph.size()];
-        playerGraph.keySet().toArray(playerNodes);
-        Arrays.sort(playerNodes);
+        if (enemyGraph == null) {
 
-        List<Node[]>  enemiesNodes = new ArrayList<Node[]>();
-
-        Node[] temp = null;
-        for(Map<Node, List<Node>> graph: enemyGraphs) {
-            temp = new Node[graph.size()];
-            graph.keySet().toArray(temp);
-            Arrays.sort(temp);
-            enemiesNodes.add(temp);
+            for (Node n: nodes) if (n.value == -1) n.value = -1;
+            for (Node n: playerGraph.keySet()) nodes.get(n.x + n.y * WIDTH).value = n.g;
         }
+        else {
 
-        for (Node n: playerNodes) n.cost = Integer.MAX_VALUE;
+            // put in sets into list and then sorts
+            Node[] playerNodes = new Node[playerGraph.size()];
+            playerGraph.keySet().toArray(playerNodes);
+            Arrays.sort(playerNodes);
 
-        for(Node[] enemyNodes: enemiesNodes) {
+            // put in sets into list and then sorts
+            Node[] enemyNodes = new Node[enemyGraph.size()];
+            enemyGraph.keySet().toArray(enemyNodes);
+            Arrays.sort(enemyNodes);
 
             int i1 = 0;
             int i2 = 0;
@@ -413,8 +411,7 @@ class Player {
                 if (i1 >= playerNodes.length) {
                     i2++;
                     continue;
-                }
-                else if (i2 >= enemyNodes.length) {
+                } else if (i2 >= enemyNodes.length) {
                     i1++;
                     continue;
                 }
@@ -424,19 +421,19 @@ class Player {
                     i1++;
                     i2++;
 
-                    for (Node n: evaluated) if (n.equals(playerNodes[i1 - 1])) continue;
+                    for (Node n : evaluated) if (n.equals(playerNodes[i1 - 1])) continue;
 
                     costResult = enemyNodes[i2 - 1].g - playerNodes[i1 - 1].g;
 
                     if (costResult < playerNodes[i1 - 1].cost)
                         playerNodes[i1 - 1].cost = costResult;
-                    nodes.get(playerNodes[i1 - 1].x +  playerNodes[i1 - 1].y * WIDTH).cost = costResult;
-                }
-                else if (compareResult > 0) i2++;
+                    nodes.get(playerNodes[i1 - 1].x + playerNodes[i1 - 1].y * WIDTH).cost = costResult;
+                } else if (compareResult > 0) i2++;
                 else i1++;
             }
         }
     }
+
 
     //gives symbols to each node and creates a voronoi diagram
     public static void voronoiDiagramLayer(Map<Node, List<Node>> playerGraph, Node player,
@@ -453,10 +450,13 @@ class Player {
             }
         }
 
+        Map<Node, List<Node>> closestEnemyGraph = null;
 
+        for(int index = 0; index < enemies.size(); index++) {
+            if (enemies.get(index).equals(closestEnemy)) closestEnemyGraph = enemyGraphs.get(index);
+        }
 
-
-        voronoiDistanceLayer(playerGraph, enemyGraphs, evaluated);
+        voronoiDistanceLayer(playerGraph, closestEnemyGraph, evaluated);
 
         Set unreachable =  new HashSet<Node>();
         Set reachablePlayerNodes = new HashSet<Node>();
