@@ -193,11 +193,12 @@ class Player {
 
                 evaluated = new ArrayList<Node>();
 
-                voronoiDiagramLayer(playerGraph, player, enemyGraphs, reachableEnemies, new ArrayList<Node>());
-
-                //showVoronoiDiagram(); // used to display voronoi diagram layer
-
                 setCost(playerGraph, player, enemyGraphs, reachableEnemies, 2, evaluated);
+
+                voronoiDiagramLayer(playerGraph, player, enemyGraphs, reachableEnemies, new ArrayList<Node>());
+                showVoronoiDiagram(); // used to display voronoi diagram layer
+
+
                 //alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
 
                 System.err.println("CURRENT-POS:" + player);
@@ -211,7 +212,7 @@ class Player {
 
                 //showFreeSpaces(); // show how many open spaces are around node
                 //showSpaceValue(); // show if node is empty or a players wall
-                showCost(); // show cost given to all nodes
+                //showCost(); // show cost given to all nodes
             }
             else {
 
@@ -348,35 +349,34 @@ class Player {
 
         if ((depth == 0) || (children.size() == 0)) return;
 
-        Map<Node, List<Node>> childGraph;
-
         int nodesCloserToPlayer = 0;
         int divider = 1;
+
+        voronoiDiagramLayer(playerGraph, player, enemyGraphs, enemies, evaluated);
+
+        nodesCloserToPlayer = 0;
+        for (Node node: neighbors.keySet()) if (node.symbol == '+') nodesCloserToPlayer++;
+
+        for(Node e: enemies) if  (playerGraph.keySet().contains(e)) divider++;
+
+        player.cost = nodesCloserToPlayer + (playerGraph.size() - divider) / divider;
+        Node temp = nodes.get(player.x + player.y * WIDTH);
+        temp.cost = player.cost;
+
+        evaluated.add(player);
+
+        Map<Node, List<Node>> childGraph;
         int playerValue = player.value;
 
         for(Node child : children) {
 
             if ((child.value != -1) && evaluated.contains(child)) continue;
+
             child.value = playerValue;
-
-            evaluated.add(child);
             childGraph = newGraph(child, enemies);
-
-            for(Node e: enemies) if  (childGraph.keySet().contains(e)) divider++;
-
-            voronoiDiagramLayer(childGraph, child, enemyGraphs, enemies, evaluated);
-
-            nodesCloserToPlayer = 0;
-            for (Node node: neighbors.keySet()) if (node.symbol == '+') nodesCloserToPlayer++;
-            //for (Node node: neighbors.keySet()) if (node.symbol == 'P' || node.symbol == '@') pCount++;
-
-            child.cost = nodesCloserToPlayer + (childGraph.size() - divider) / divider;
-            Node temp = nodes.get(child.x + child.y * WIDTH);
-            temp.cost = child.cost;
-
             setCost(childGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
-            temp.value = -1;
             child.value = -1;
+            //for (Node node: neighbors.keySet()) if (node.symbol == 'P' || node.symbol == '@') pCount++;
         }
     }
 
@@ -474,7 +474,7 @@ class Player {
 
         unreachable.addAll(neighbors.keySet());
         unreachable.removeAll(reachablePlayerNodes);
-        for(Set<Node> enemyNodes: reachableEnemyNodes) unreachable.removeAll(enemyNodes);
+        // for(Set<Node> enemyNodes: reachableEnemyNodes) unreachable.removeAll(enemyNodes);
 
         for(Node node: neighbors.keySet()) {
 
