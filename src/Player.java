@@ -106,7 +106,7 @@ class Player {
         Map<Node, List<Node>> playerGraph = null;
 
         List<Node> enemies = null;
-        List<Map<Node, List<Node>>> enemyGraphs = null;
+        List<Map<Node, List<Node>>> reachableEnemyGraphs = null;
 
         Set<Integer> wallsToErase = new HashSet<Integer>();
         int wallsToErasePreviousSize = wallsToErase.size();
@@ -178,6 +178,14 @@ class Player {
                 }
             }
 
+            List<Node> playerList = new ArrayList<Node>(); // list to pass player as second argument
+            playerList.add(player);
+
+            reachableEnemyGraphs = new ArrayList<Map<Node, List<Node>>>();
+            for (Node n : reachableEnemies) reachableEnemyGraphs.add(newGraph(n, playerList));// creates graph to nodes that player can reach
+
+            evaluated = new ArrayList<Node>();
+
             System.err.println("MOVES REMAINING: " + (playerGraph.size() - 1 - reachableEnemies.size()));
 
             if (reachableEnemies.size() > 0) {
@@ -185,21 +193,8 @@ class Player {
                 for (Node n : reachableEnemies) System.err.println("DISTANCE FROM ENEMY-" + n.value + ": " + n.g + "\nENEMY-POS: " + n);
                 System.err.println("CLOSEST ENEMY-" + closestEnemy.value + ":" + closestEnemy);
 
-                List<Node> playerList = new ArrayList<Node>(); // list to pass player as second argument
-                playerList.add(player);
-
-                enemyGraphs = new ArrayList<Map<Node, List<Node>>>();
-                for (Node n : reachableEnemies) enemyGraphs.add(newGraph(n, playerList));// creates graph to nodes that player can reach
-
-                evaluated = new ArrayList<Node>();
-
-                setCost(playerGraph, player, enemyGraphs, reachableEnemies, 2, evaluated);
-
-                voronoiDiagramLayer(playerGraph, player, enemyGraphs, reachableEnemies, new ArrayList<Node>());
-                showVoronoiDiagram(); // used to display voronoi diagram layer
-
-
-                //alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
+                setCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
+                //alphabeta(playerGraph, player, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
 
                 System.err.println("CURRENT-POS:" + player);
                 for (Node e: evaluated)  System.err.println("EVALUATED-POS" + e);
@@ -209,6 +204,8 @@ class Player {
                 //for (Node n : playerGraph.get(player)) System.err.println("POSSIBLE-MOVES: " + n);
 
 
+                voronoiDiagramLayer(playerGraph, player, reachableEnemyGraphs, reachableEnemies, new ArrayList<Node>());
+                showVoronoiDiagram(); // used to display voronoi diagram layer
 
                 //showFreeSpaces(); // show how many open spaces are around node
                 //showSpaceValue(); // show if node is empty or a players wall
@@ -227,6 +224,7 @@ class Player {
             }
 
             System.out.println(bestMove); // output
+
 
             end = System.currentTimeMillis();
             System.err.println("TURN MILLIS: " + (end - start));
