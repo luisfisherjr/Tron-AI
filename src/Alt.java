@@ -1,3 +1,24 @@
+// working on DiagramLayer /  Distance / Cost
+// working branch
+
+// currently working but recursion is wrong
+// now must do diagram but with many enemies
+
+// if there is a fork that splits into enemy and away from enemy
+// choose best branch for survival
+
+// once blocked off from enemies, find out what enemies walled you in
+// make it priority to fill spaces away from the enemy walls
+
+// if you walled yourself in completely got to vanilla survival mode
+
+// if an enemy wall is part of your entrapment
+// find out how many spaces they have before they die
+// make it a priority to avoid the enemy entrapment walls
+// higher priority to enemy with less moves left
+
+// how do i do this?
+
 import java.util.*;
 
 class Node implements Comparable<Node>{
@@ -100,6 +121,7 @@ class Player {
 
         String bestMove = ""; // UP DOWN LEFT RIGHT
 
+        //fixedHead
         List<Node> evaluated = null;
 
         Node player = null; // current player
@@ -162,11 +184,7 @@ class Player {
                 wallsToErasePreviousSize = wallsToErase.size();
             }
 
-            showSpaceValue();
-
             playerGraph = newGraph(player, enemies);
-
-            System.err.println("playerGraphSize:" + playerGraph.size());
 
             List<Node> reachableEnemies = new ArrayList<Node>();
 
@@ -183,8 +201,6 @@ class Player {
                 }
             }
 
-            System.err.println("playerGraphSize:" + playerGraph.size());
-
             List<Node> playerList = new ArrayList<Node>(); // list to pass player as second argument
             playerList.add(player);
 
@@ -194,15 +210,28 @@ class Player {
             evaluated = new ArrayList<Node>();
 
             System.err.println("MOVES REMAINING: " + (playerGraph.size() - 1 - reachableEnemies.size()));
-
             if (reachableEnemies.size() > 0) {
 
+                //for (Node n : enemiesPlayerCanReach) System.err.println("DISTANCE FROM ENEMY-" + n.value + ": " + n.g + "\nENEMY-POS: " + n);
                 attackCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
-                alphabeta(playerGraph, player, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
+                //alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
+
+//                for (Node n: playerGraph.keySet()) {
+//                    if (n.equals(player)) {
+//                        System.err.println("root-post" + n);
+//                        break;
+//                    }
+//                }
+//                for (Node e: evaluated)  System.err.println("evaluated-post" + e);
+
+
+                //System.err.println("PLAYER-POS: " + player + " " + P);
+                //for (Node n : playerGraph.get(player)) System.err.println("POSSIBLE-MOVES: " + n);
+
                 bestMove = nextMoves(playerGraph, player, reachableEnemies);
 
+                //voronoiDiagramLayer(playerGraph, player, enemyGraphs, enemies, new ArrayList<Node>());
                 //showVoronoiDiagram(); // used to display voronoi diagram layer
-
                 //showFreeSpaces(); // show how many open spaces are around node
                 //showSpaceValue(); // show if node is empty or a players wall
                 //showCost(); // show cost given to all nodes
@@ -212,14 +241,8 @@ class Player {
                 System.err.println("ENEMY UNREACHABLE");
 
                 /* must create a fill method */
-                survivalCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
-                alphabeta(playerGraph, player, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
+                alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
                 bestMove = nextMoves(playerGraph, player, reachableEnemies);
-
-
-                //surviveCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
-                //alphabeta(playerGraph, player, 2, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
-                //bestMove = nextMoves(playerGraph, player, reachableEnemies);
             }
 
             System.out.println(bestMove); // output
@@ -233,27 +256,14 @@ class Player {
     // this function is working as intended
     public static String nextMoves(Map<Node, List<Node>> playerGraph, Node player, List<Node> enemies) {
 
-        boolean isPlayerFirst = true;
         Node nextBestMove = null;
         int highestCost = Integer.MIN_VALUE;
 
-        System.err.println("current Pos: " + player);
-
         for (Node node: playerGraph.get(player)) {
 
-//            for (Node e: enemies) {
-//                if (neighbors.get(e).contains(node) && (e.value < player.value)) {
-//                    isPlayerFirst = false;
-//                    break;
-//                }
-//            }
-//
-//            if (!isPlayerFirst) {
-//                isPlayerFirst = true;
-//                continue;
-//            }
+            if ((enemies.contains(node)) || (nodes.get(node.x + node.y * WIDTH).value != -1)) continue;
 
-            System.err.println("possible Move: " + node);
+            System.err.println(node);
 
             if (node.cost > highestCost) { // finds non enemy nodes with highest cost
                 highestCost = node.cost;
@@ -261,7 +271,7 @@ class Player {
             }
         }
 
-        System.err.println("picked Move: " + nextBestMove);
+        System.err.println(nextBestMove);
 
         if (player.y - 1 == nextBestMove.y) return "UP";
         else if (player.x + 1 == nextBestMove.x) return "RIGHT";
@@ -272,6 +282,14 @@ class Player {
 
     // creates a tree using the graph, deep copy of nodes     maybe change?
     public static Map<Node, List<Node>>newGraph(Node player, List<Node> enemies) {
+
+        Map<Node, Integer> enemyValues = new HashMap<Node, Integer>();
+
+        for(Node e: enemies) {
+            Node n = nodes.get(e.x + e.y * WIDTH);
+            enemyValues.put(n,e.value);
+            n.value = -1;
+        }
 
         Map<Node, List<Node>> graphOut = new HashMap<Node, List<Node>>();
 
@@ -298,10 +316,10 @@ class Player {
 
             if (enemies.contains(parent)) continue;
 
+            Integer value = null;
             for (Node child : neighbors.get(nodes.get(parent.x + parent.y * WIDTH))) {
 
                 if (explored.contains(child)) continue;
-                else if (enemies.contains(child));
                 else if (child.value != -1) continue;
 
                 if (!frontier.contains(child)) {
@@ -309,12 +327,21 @@ class Player {
                     child.g = parent.g + 1;
                     child.parent = parent;
 
+                    value = enemyValues.get(child);
+                    if (value != null) child.value = value;
+
                     temp = new Node(child);
                     children.add(temp);
                     frontier.add(temp);
                 }
             }
         }
+
+        for(Node e: enemies) {
+            Node n = nodes.get(e.x + e.y * WIDTH);
+            n.value = enemyValues.get(n);
+        }
+
         return  graphOut;
     }
 
@@ -323,10 +350,27 @@ class Player {
     public static void attackCost(Map<Node, List<Node>> playerGraph, Node player,
                                   List<Map<Node, List<Node>>> enemyGraphs, List<Node> enemies, int depth, List<Node> evaluated) {
 
+
         Node temp = null;
         Map<Node, List<Node>> tempGraph = null;
 
-        if (depth == 0 || evaluated.contains(player) || enemies.contains(player)) return;
+        if (depth == 0) return;
+
+        int playerValue = player.value;
+        List<Node> children = playerGraph.get(player);
+
+        for(Node child : children) {
+
+            if (child.value != -1) continue;
+
+            child.value = playerValue;
+            temp = nodes.get(child.x + child.y * WIDTH);
+            temp.value = child.value;
+
+            attackCost(playerGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
+            child.value = -1;
+            temp.value = child.value;
+        }
 
         temp = nodes.get(player.x + player.y * WIDTH);
 
@@ -343,71 +387,76 @@ class Player {
 
         player.cost = nodesCloserToPlayer + (tempGraph.size() - divider) / divider;
         temp.cost = player.cost;
-
-        evaluated.add(player);
-
-        List<Node> children = playerGraph.get(player);
-
-        for(Node child : children) {
-
-            if (child.value != -1) continue;
-
-            temp = nodes.get(child.x + child.y * WIDTH);
-            temp.value = player.value;
-            child.value = temp.value;
-
-            attackCost(playerGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
-
-            temp.value = -1;
-            child.value = temp.value;
-        }
-    }
-
-    public static void survivalCost(Map<Node, List<Node>> playerGraph, Node player,
-                                  List<Map<Node, List<Node>>> enemyGraphs, List<Node> enemies, int depth, List<Node> evaluated) {
-
-        Node temp = null;
-        Map<Node, List<Node>> tempGraph = null;
-
-        if (depth == 0 || evaluated.contains(player) || enemies.contains(player)) return;
-
-        temp = nodes.get(player.x + player.y * WIDTH);
-
-        int nodesCloserToPlayer = 0;
-        int divider = 1;
-
-        tempGraph = newGraph(player, enemies);
-
-        player.cost = tempGraph.size();
-        temp.cost = player.cost;
-
-        evaluated.add(player);
-
-        List<Node> children = playerGraph.get(player);
-
-        for(Node child : children) {
-
-            if (child.value != -1) continue;
-
-            temp = nodes.get(child.x + child.y * WIDTH);
-            temp.value = player.value;
-            child.value = temp.value;
-
-            attackCost(playerGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
-
-            temp.value = -1;
-            child.value = temp.value;
-        }
+        evaluated.add(new Node(player));
     }
 
     // used in voronoiDiagramLayer to calculate distance from player/enemy
+    public static void voronoiDiagramLayer(Map<Node, List<Node>> playerGraph, Node player,
+                                           List<Map<Node, List<Node>>> enemyGraphs,List<Node> enemies, List<Node> evaluated) {
+
+        Node closestEnemy = null;
+        int closestDistance = Integer.MAX_VALUE;
+        for (Node n : playerGraph.keySet()) {
+            if (enemies.contains(n)) {
+                if (n.g < closestDistance) {
+                    closestEnemy = n;
+                    closestDistance = n.g;
+                }
+            }
+        }
+
+        Map<Node, List<Node>> closestEnemyGraph = null;
+
+        for(int index = 0; index < enemies.size(); index++) {
+            if (enemies.get(index).equals(closestEnemy)) closestEnemyGraph = enemyGraphs.get(index);
+        }
+
+        voronoiDistanceLayer(playerGraph, closestEnemyGraph, evaluated);
+
+        Set unreachable =  new HashSet<Node>();
+        Set reachablePlayerNodes = new HashSet<Node>();
+        List<Set<Node>> reachableEnemyNodes = new ArrayList<Set<Node>>();
+
+        reachablePlayerNodes.addAll(playerGraph.keySet());
+
+        Set<Node> temp;
+
+        for(Map<Node, List<Node>> graph: enemyGraphs) {
+            temp = new HashSet<Node>();
+            temp.addAll(graph.keySet());
+            reachableEnemyNodes.add(temp);
+        }
+
+        unreachable.addAll(neighbors.keySet());
+        unreachable.removeAll(reachablePlayerNodes);
+        // for(Set<Node> enemyNodes: reachableEnemyNodes) unreachable.removeAll(enemyNodes);
+
+        for(Node node: neighbors.keySet()) {
+
+            if (node.value == -1) {
+                if (unreachable.contains(node)) node.symbol = '#';
+                else if (node.cost < 0) node.symbol = '-'; // nodes that enemy can reach first, currently all are 1 symbol
+                else if (node.cost > 0) node.symbol = '+'; // nodes that player can reach first
+                else node.symbol = '?'; // battle front where enemy can possibly reach before player
+            }
+            else {
+                if (player.equals(node)) node.symbol = 'X';
+                else if (enemies.contains(node)) node.symbol = (char) (64 + node.value);
+                else {
+                    node.symbol = '#';
+                }
+            }
+        }
+    }
+
+    //gives symbols to each node and creates a voronoi diagram
     public static void voronoiDistanceLayer(Map<Node, List<Node>> playerGraph,
                                             Map<Node, List<Node>> enemyGraph, List<Node> evaluated) {
 
         if (enemyGraph == null) {
 
-            //for (Node n: nodes) if (n.value == -1) n.value = -1;
-            for (Node n: playerGraph.keySet()) nodes.get(n.x + n.y * WIDTH).cost = n.g;
+            for (Node n: nodes) if (n.value == -1) n.value = -1;
+            for (Node n: playerGraph.keySet()) nodes.get(n.x + n.y * WIDTH).value = n.g;
         }
         else {
 
@@ -450,57 +499,6 @@ class Player {
                     nodes.get(playerNodes[i1 - 1].x + playerNodes[i1 - 1].y * WIDTH).cost = costResult;
                 } else if (compareResult > 0) i2++;
                 else i1++;
-            }
-        }
-    }
-
-
-    //gives symbols to each node and creates a voronoi diagram
-    public static void voronoiDiagramLayer(Map<Node, List<Node>> playerGraph, Node player,
-                                           List<Map<Node, List<Node>>> enemyGraphs,List<Node> enemies, List<Node> evaluated) {
-
-        Node closestEnemy = null;
-        int closestDistance = Integer.MAX_VALUE;
-        for (Node n : playerGraph.keySet()) {
-            if (enemies.contains(n)) {
-                if (n.g < closestDistance) {
-                    closestEnemy = n;
-                    closestDistance = n.g;
-                }
-            }
-        }
-
-        Map<Node, List<Node>> closestEnemyGraph = null;
-
-        for(int index = 0; index < enemies.size(); index++) {
-            if (enemies.get(index).equals(closestEnemy)) closestEnemyGraph = enemyGraphs.get(index);
-        }
-
-        voronoiDistanceLayer(playerGraph, closestEnemyGraph, evaluated);
-
-        Set unreachable =  new HashSet<Node>();
-        Set reachablePlayerNodes = new HashSet<Node>();
-
-        reachablePlayerNodes.addAll(playerGraph.keySet());
-
-        unreachable.addAll(neighbors.keySet());
-        unreachable.removeAll(reachablePlayerNodes);
-        // for(Set<Node> enemyNodes: reachableEnemyNodes) unreachable.removeAll(enemyNodes);
-
-        for(Node node: neighbors.keySet()) {
-
-            if (node.value == -1) {
-                if (unreachable.contains(node)) node.symbol = '#';
-                else if (node.cost < 0) node.symbol = '-'; // nodes that enemy can reach first, currently all are 1 symbol
-                else if (node.cost > 0) node.symbol = '+'; // nodes that player can reach first
-                else node.symbol = '?'; // battle front where enemy can possibly reach before player
-            }
-            else {
-                if (player.equals(node)) node.symbol = 'X';
-                else if (enemies.contains(node)) node.symbol = (char) (64 + node.value);
-                else {
-                    node.symbol = '#';
-                }
             }
         }
     }
