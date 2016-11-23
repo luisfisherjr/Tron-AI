@@ -168,6 +168,7 @@ class Player {
 
             Node closestEnemy = null;
             int closestDistance = Integer.MAX_VALUE;
+
             for (Node n : playerGraph.keySet()) {
                 if (enemies.contains(n)) {
                     reachableEnemies.add(n);
@@ -190,22 +191,11 @@ class Player {
 
             if (reachableEnemies.size() > 0) {
 
-                for (Node n : reachableEnemies) System.err.println("DISTANCE FROM ENEMY-" + n.value + ": " + n.g + "\nENEMY-POS: " + n);
-                System.err.println("CLOSEST ENEMY-" + closestEnemy.value + ":" + closestEnemy);
+                attackCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
+                bestMove = nextMoves(playerGraph, player, reachableEnemies);
 
-                setCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
-                //alphabeta(playerGraph, player, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
-
-                System.err.println("CURRENT-POS:" + player);
-                for (Node e: evaluated)  System.err.println("EVALUATED-POS" + e);
-                bestMove = nextMoves(playerGraph, player, enemies);
-
-                //System.err.println("PLAYER-POS: " + player + " " + P);
-                //for (Node n : playerGraph.get(player)) System.err.println("POSSIBLE-MOVES: " + n);
-
-
-                voronoiDiagramLayer(playerGraph, player, reachableEnemyGraphs, reachableEnemies, new ArrayList<Node>());
-                showVoronoiDiagram(); // used to display voronoi diagram layer
+                //voronoiDiagramLayer(playerGraph, player, reachableEnemyGraphs, reachableEnemies, new ArrayList<Node>());
+                //showVoronoiDiagram(); // used to display voronoi diagram layer
 
                 //showFreeSpaces(); // show how many open spaces are around node
                 //showSpaceValue(); // show if node is empty or a players wall
@@ -216,15 +206,13 @@ class Player {
                 System.err.println("ENEMY UNREACHABLE");
 
                 /* must create a fill method */
-                alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
-                bestMove = nextMoves(playerGraph, player, new ArrayList<Node>());
 
-                System.err.println("PLAYER-POS: " + player);
-                for (Node n : playerGraph.get(player)) if (!enemies.contains(n)) System.err.println("POSSIBLE-MOVES: " + n);
+                survivalCost(playerGraph, player, 3);
+                alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
+                bestMove = nextMoves(playerGraph, player, reachableEnemies);
             }
 
             System.out.println(bestMove); // output
-
 
             end = System.currentTimeMillis();
             System.err.println("TURN MILLIS: " + (end - start));
@@ -304,17 +292,16 @@ class Player {
             children = new ArrayList<Node>();
 
             explored.add(parent);
+            graphOut.put(parent, children);
 
-            if (enemies.contains(parent)) {
-                graphOut.put(parent, children);
-                continue;
-            }
+            if (enemies.contains(parent)) continue;
 
             Integer value = null;
             for (Node child : neighbors.get(nodes.get(parent.x + parent.y * WIDTH))) {
 
                 if (explored.contains(child)) continue;
                 else if (child.value != -1) continue;
+
                 if (!frontier.contains(child)) {
 
                     child.g = parent.g + 1;
@@ -328,7 +315,6 @@ class Player {
                     frontier.add(temp);
                 }
             }
-            graphOut.put(parent, children);
         }
 
         for(Node n: enemyValues.keySet()) {
@@ -340,42 +326,70 @@ class Player {
 
     // fixing to work with multiple graphs
     // sets cost of move in a graph with voronoi DiagramLayer & voronoiDistanceLayer recursive
-    public static void setCost(Map<Node, List<Node>> playerGraph, Node player,
-                               List<Map<Node, List<Node>>> enemyGraphs, List<Node> enemies, int depth, List<Node> evaluated) {
+    public static void attackCost(Map<Node, List<Node>> playerGraph, Node player,
+                                  List<Map<Node, List<Node>>> enemyGraphs, List<Node> enemies, int depth, List<Node> evaluated) {
 
+
+        Node temp = null;
+        Map<Node, List<Node>> tempGraph = null;
+
+        if (depth == 0) return;
+
+        int playerValue = player.value;
         List<Node> children = playerGraph.get(player);
 
-        if ((depth == 0) || (children.size() == 0)) return;
+        for(Node child : children) {
+
+            if (child.value != -1) continue;
+
+            child.value = playerValue;
+            temp = nodes.get(child.x + child.y * WIDTH);
+            temp.value = child.value;
+
+            attackCost(playerGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
+            child.value = -1;
+            temp.value = child.value;
+        }
+
+        temp = nodes.get(player.x + player.y * WIDTH);
 
         int nodesCloserToPlayer = 0;
         int divider = 1;
 
-        voronoiDiagramLayer(playerGraph, player, enemyGraphs, enemies, evaluated);
+        tempGraph = newGraph(player, enemies);
+        voronoiDiagramLayer(tempGraph , player, enemyGraphs, enemies, evaluated);
 
         nodesCloserToPlayer = 0;
         for (Node node: neighbors.keySet()) if (node.symbol == '+') nodesCloserToPlayer++;
 
-        for(Node e: enemies) if  (playerGraph.keySet().contains(e)) divider++;
+        for(Node e: enemies) if  (tempGraph.keySet().contains(e)) divider++;
 
-        player.cost = nodesCloserToPlayer + (playerGraph.size() - divider) / divider;
-        Node temp = nodes.get(player.x + player.y * WIDTH);
+        player.cost = nodesCloserToPlayer + (tempGraph.size() - divider) / divider;
         temp.cost = player.cost;
+        evaluated.add(new Node(player));
+    }
 
-        evaluated.add(player);
+    public static void survivalCost(Map<Node, List<Node>> playerGraph, Node player, Integer depth) {
 
-        Map<Node, List<Node>> childGraph;
-        int playerValue = player.value;
 
-        for(Node child : children) {
+        Queue<Node> frontier = new LinkedList<>();
 
-            if ((child.value != -1) && evaluated.contains(child)) continue;
-
-            child.value = playerValue;
-            childGraph = newGraph(child, enemies);
-            setCost(childGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
-            child.value = -1;
-            //for (Node node: neighbors.keySet()) if (node.symbol == 'P' || node.symbol == '@') pCount++;
-        }
+    /*
+    Flood-fill (node, target-color, replacement-color):
+    1. Set Q to the empty queue.
+    2. If the color of node is not equal to target-color, return.
+    3. Add node to the end of Q.
+    4. For each element n of Q:
+    5.  Set w and e equal to n.
+    6.  Move w to the west until the color of the node to the west of w no longer matches target-color.
+    7.  Move e to the east until the color of the node to the east of e no longer matches target-color.
+    8.  Set the color of nodes between w and e to replacement-color.
+    9.  For each node n between w and e:
+    10.   If the color of the node to the north of n is target-color, add that node to the end of Q.
+      If the color of the node to the south of n is target-color, add that node to the end of Q.
+    11. Continue looping until Q is exhausted.
+    12. Return.
+     */
     }
 
     // used in voronoiDiagramLayer to calculate distance from player/enemy
