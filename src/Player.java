@@ -169,7 +169,7 @@ class Player {
 
             playerGraph = newGraph(player, enemies);
 
-            System.err.println("playerGraphSize:" + playerGraph.size());
+            //System.err.println("playerGraphSize:" + playerGraph.size());
 
             List<Node> reachableEnemies = new ArrayList<Node>();
 
@@ -186,7 +186,7 @@ class Player {
                 }
             }
 
-            System.err.println("reachable enemy size: " + reachableEnemies.size());
+            //System.err.println("reachable enemy size: " + reachableEnemies.size());
 
             playerGraph = newGraph(player, reachableEnemies);
 
@@ -206,8 +206,8 @@ class Player {
             /*playeing with attackCost/ alphabeta*/
             if (reachableEnemies.size() > 0) {
 
-                attackCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 3, evaluated);
-                alphabeta(playerGraph, player, 2, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
+                attackCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
+                //alphabeta(playerGraph, player, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
                 bestMove = nextMoves(playerGraph, player, reachableEnemies);
 
                 //showVoronoiDiagram(); // used to display voronoi diagram layer
@@ -221,8 +221,8 @@ class Player {
                 //System.err.println("ENEMY UNREACHABLE");
 
                 /* must create a fill method */
-                survivalCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 5, evaluated);
-                alphabeta(playerGraph, player, 4, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
+                survivalCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 4, evaluated);
+                alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
                 bestMove = nextMoves(playerGraph, player, reachableEnemies);
 
 
@@ -353,10 +353,23 @@ class Player {
 
         for(Node e: enemies) if  (tempGraph.keySet().contains(e)) divider++;
 
+
+        if (divider > 1) player.cost = nodesCloserToPlayer + (tempGraph.size() - divider);
+        else player.cost = (tempGraph.size() - divider) * 2;
+
+        // second
         //player.cost = nodesCloserToPlayer + (tempGraph.size() - divider);
-        //player.cost = nodesCloserToPlayer + (tempGraph.size() - divider) / divider;
+
+        //third
         //player.cost = nodesCloserToPlayer + (tempGraph.size() - divider * 5);
-        player.cost = nodesCloserToPlayer + ((tempGraph.size() + divider) / divider) + divider * 5;
+
+        //4tg
+        //player.cost = nodesCloserToPlayer + ((tempGraph.size() + divider) / divider) + divider * 5;
+
+        // most current
+
+//
+//        player.cost = tempGraph.size()  + (nodesCloserToPlayer) / ( divider * divider);
         temp.cost = player.cost;
 
         evaluated.add(player);
@@ -393,7 +406,10 @@ class Player {
 
         tempGraph = newGraph(player, enemies);
 
-        player.cost = tempGraph.size();
+        int adjacentSum = 0;
+        for (Node n: tempGraph.keySet()) adjacentSum += n.openAdjacent;
+
+        player.cost = tempGraph.size() + adjacentSum;
         temp.cost = player.cost;
 
         evaluated.add(player);
