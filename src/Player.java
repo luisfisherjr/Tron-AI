@@ -1,16 +1,17 @@
 import java.util.*;
 
-class Node implements Comparable<Node>{
-    public char symbol;
-    public int x;
-    public int y;
-    public int value;
-    public int cost;
-    public int openAdjacent;
-    public int g = Integer.MAX_VALUE;
-    public Node parent = null;
+// node is package-private / default
+class Node implements Comparable<Node> {
+    char symbol;
+    int x;
+    int y;
+    int value;
+    int cost;
+    int openAdjacent;
+    int g = Integer.MAX_VALUE;
+    Node parent = null;
 
-    public Node(int x, int y, int value) {
+    Node(int x, int y, int value) {
         this.x = x;
         this.y = y;
         this.value = value;
@@ -19,7 +20,7 @@ class Node implements Comparable<Node>{
         this.symbol = ' ';
     }
 
-    public Node(Node toCopy) {
+    Node(Node toCopy) {
         this.x = toCopy.x;
         this.y = toCopy.y;
         this.value = toCopy.value;
@@ -63,16 +64,22 @@ class Player {
     final static int WIDTH = 30;
     final static int HEIGHT = 20;
 
+    static Map<Integer, Set<Node>> lightTrails;
     static Map<Node, List<Node>> neighbors;
     static List<Node> nodes;
+
 
     public static void main(String args[]) {
 
         nodes = new ArrayList<Node>();
         neighbors = new HashMap<Node, List<Node>>();
+        lightTrails = new HashMap<Integer,Set<Node>>();
+
+        // players are 0 indexed max players are 4
+        for(int index = 0; index < 4; index++) lightTrails.put(index, new HashSet<Node>());
 
         Node current; // current node position
-        List currNeighbors; // list of node neighbors
+        List<Node> currNeighbors; // list of node neighbors
 
         // adds the nodes to a list in correct order
         for(int index = 0; index < WIDTH * HEIGHT; index++ ) nodes.add(new Node(index % WIDTH, index / WIDTH, -1));
@@ -141,6 +148,7 @@ class Player {
                 current.cost = 0;
 
                 for (Node n : neighbors.get(current)) if (n.value == -1) n.openAdjacent--; // updates neighbors of wall
+                lightTrails.get(i).add(current);
 
                 if (i == P) player = current;
                 else enemies.add(current);
@@ -152,11 +160,18 @@ class Player {
             // resets walls of enemy that died to open space and refreshes openAdjacent values
             // checked against all entries that have been deleted in case more than 1 enemy dies in same turn
             if (wallsToErasePreviousSize != wallsToErase.size()) {
-                for (Node node : neighbors.keySet()) {
-                    if (wallsToErase.contains(node.value)) {
-                        node.value = -1;
+
+                // removes walls of dead players
+                for (Integer integer: wallsToErase) {
+                    if (lightTrails.containsKey(integer)) {
+                        for (Node lightWall: lightTrails.get(integer)) {
+                            lightWall.value = -1;
+                        }
+                        lightTrails.remove(integer);
                     }
                 }
+
+                // resets openAdjacent values for entire graph
                 for (Node node : neighbors.keySet()) {
                     if (node.value == -1) {
                         node.openAdjacent = 4;
@@ -165,7 +180,6 @@ class Player {
                 }
                 wallsToErasePreviousSize = wallsToErase.size();
             }
-
 
             playerGraph = newGraph(player, enemies);
 
