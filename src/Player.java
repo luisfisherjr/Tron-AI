@@ -154,57 +154,38 @@ class Player {
                 else enemies.add(current);
             }
 
-            //System.err.println("enemies size: " + enemies.size());
-
             // if there has been a change in wallsToErase
             // resets walls of enemy that died to open space and refreshes openAdjacent values
             // checked against all entries that have been deleted in case more than 1 enemy dies in same turn
             if (wallsToErasePreviousSize != wallsToErase.size()) {
-
-                // removes walls of dead players
                 for (Integer integer: wallsToErase) {
                     if (lightTrails.containsKey(integer)) {
                         for (Node lightWall: lightTrails.get(integer)) {
                             lightWall.value = -1;
+                            for (Node neighbor : neighbors.get(lightWall)) {
+                                if (neighbor.value == -1) {
+                                    neighbor.openAdjacent++;
+                                    lightWall.openAdjacent++;
+                                }
+                            }
                         }
                         lightTrails.remove(integer);
                     }
-                }
-
-                // resets openAdjacent values for entire graph
-                for (Node node : neighbors.keySet()) {
-                    if (node.value == -1) {
-                        node.openAdjacent = 4;
-                        for (Node neighbor : neighbors.get(node)) if (neighbor.value != -1) node.openAdjacent--;
-                    } else node.openAdjacent = 0;
                 }
                 wallsToErasePreviousSize = wallsToErase.size();
             }
 
             playerGraph = newGraph(player, enemies);
 
-            //System.err.println("playerGraphSize:" + playerGraph.size());
-
             List<Node> reachableEnemies = new ArrayList<Node>();
-
-            Node closestEnemy = null;
-            int closestDistance = Integer.MAX_VALUE;
 
             for (Node n : playerGraph.keySet()) {
                 if (enemies.contains(n)) {
                     reachableEnemies.add(n);
-                    if (n.g < closestDistance) {
-                        closestEnemy = n;
-                        closestDistance = n.g;
-                    }
                 }
             }
 
-            //System.err.println("reachable enemy size: " + reachableEnemies.size());
-
             playerGraph = newGraph(player, reachableEnemies);
-
-            //System.err.println("playerGraphSize with only reachable:" + playerGraph.size());
 
             List<Node> playerList = new ArrayList<Node>(); // list to pass player as second argument
             playerList.add(player);
@@ -214,37 +195,21 @@ class Player {
 
             evaluated = new ArrayList<Node>();
 
-            //System.err.println("MOVES REMAINING: " + (playerGraph.size() - 1 - reachableEnemies.size()));
+            //showFreeSpaces(); // show how many open spaces are around node
+            //showVoronoiDiagram(); // used to display voronoi diagram layer
+            //showSpaceValue(); // show if node is empty or a players wall
+            //showCost(); // show cost given to all nodes
 
-
-            /*playeing with attackCost/ alphabeta*/
             if (reachableEnemies.size() > 0) {
-
-                attackCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
-                //alphabeta(playerGraph, player, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
-                bestMove = nextMoves(playerGraph, player, reachableEnemies);
-
-                //showVoronoiDiagram(); // used to display voronoi diagram layer
-
-                //showFreeSpaces(); // show how many open spaces are around node
-                //showSpaceValue(); // show if node is empty or a players wall
-                //showCost(); // show cost given to all nodes
+                cost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
+                alphaBeta(playerGraph, player, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
             }
             else {
-
-                //System.err.println("ENEMY UNREACHABLE");
-
-                /* must create a fill method */
-                survivalCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 4, evaluated);
-                alphabeta(playerGraph, player, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
-                bestMove = nextMoves(playerGraph, player, reachableEnemies);
-
-
-                //surviveCost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 2, evaluated);
-                //alphabeta(playerGraph, player, 2, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
-                //bestMove = nextMoves(playerGraph, player, reachableEnemies);
+                cost(playerGraph, player, reachableEnemyGraphs, reachableEnemies, 3, evaluated);
+                alphaBeta(playerGraph, player, 2, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
             }
 
+            bestMove = nextMoves(playerGraph, player, reachableEnemies);
             System.out.println(bestMove); // output
 
             end = System.currentTimeMillis();
@@ -293,7 +258,7 @@ class Player {
         return "@.@";
     }
 
-    // creates a tree using the graph, deep copy of nodes     maybe change?
+    // creates a tree using the graph, deep copy of nodes
     public static Map<Node, List<Node>>newGraph(Node player, List<Node> enemies) {
 
         Map<Node, List<Node>> graphOut = new HashMap<Node, List<Node>>();
@@ -342,12 +307,12 @@ class Player {
     }
 
 
-    /*playeing with attackCost*/
+    /*playing with attackCost*/
 
     // fixing to work with multiple graphs
     // sets cost of move in a graph with voronoi DiagramLayer & voronoiDistanceLayer recursive
-    public static void attackCost(Map<Node, List<Node>> playerGraph, Node player,
-                                  List<Map<Node, List<Node>>> enemyGraphs, List<Node> enemies, int depth, List<Node> evaluated) {
+    public static void cost(Map<Node, List<Node>> playerGraph, Node player,
+                            List<Map<Node, List<Node>>> enemyGraphs, List<Node> enemies, int depth, List<Node> evaluated) {
 
         Node temp = null;
         Map<Node, List<Node>> tempGraph = null;
@@ -398,13 +363,14 @@ class Player {
             temp.value = player.value;
             child.value = temp.value;
 
-            attackCost(playerGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
+            cost(playerGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
 
             temp.value = -1;
             child.value = temp.value;
         }
     }
 
+    // currently not used
     public static void survivalCost(Map<Node, List<Node>> playerGraph, Node player,
                                     List<Map<Node, List<Node>>> enemyGraphs, List<Node> enemies, int depth, List<Node> evaluated) {
 
@@ -438,7 +404,7 @@ class Player {
             temp.value = player.value;
             child.value = temp.value;
 
-            attackCost(playerGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
+            cost(playerGraph, child, enemyGraphs, enemies, depth - 1, evaluated);
 
             temp.value = -1;
             child.value = temp.value;
@@ -500,7 +466,8 @@ class Player {
     }
 
 
-    //gives symbols to each node and creates a voronoi diagram
+    //gives symbols to each node and creates a voronoi diagram vs closest enemy
+    /* change to target other than closest in future */
     public static void voronoiDiagramLayer(Map<Node, List<Node>> playerGraph, Node player,
                                            List<Map<Node, List<Node>>> enemyGraphs,List<Node> enemies, List<Node> evaluated) {
 
@@ -550,7 +517,8 @@ class Player {
         }
     }
 
-    private static Node alphabeta(Map<Node, List<Node>> playerGraph, Node player, Integer depth,
+    // currently just maximizes & minimizes
+    private static Node alphaBeta(Map<Node, List<Node>> playerGraph, Node player, Integer depth,
                                   Integer alpha, Integer beta, Boolean maximizingPlayer) {
 
         List<Node> children = playerGraph.get(player);
@@ -566,7 +534,7 @@ class Player {
 
             for (Node node : children) {
 
-                alphabeta(playerGraph, node, depth - 1, alpha, beta, true);
+                alphaBeta(playerGraph, node, depth - 1, alpha, beta, true);
                 value = node.cost;
 
                 bestValue = Math.max(bestValue, value);
@@ -582,7 +550,7 @@ class Player {
 
             for (Node node : children) {
 
-                alphabeta(playerGraph, node, depth - 1, alpha, beta, true);
+                alphaBeta(playerGraph, node, depth - 1, alpha, beta, false);
                 value = node.cost;
 
                 bestValue = Math.min(bestValue, value);
