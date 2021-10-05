@@ -12,7 +12,7 @@ pipeline {
                 timout(time:10, units:minutes) {
                     echo 'Step 2 timout'
                     sh 'mvn --version'
-                    sleep 9m
+                    sh 'sleep 9m'
                 }
             }
         }
