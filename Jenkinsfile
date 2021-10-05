@@ -7,8 +7,8 @@ pipeline {
                     echo 'Step 1 retry'
                     sh 'java -version'
                     sh 'javac -version'
-                    sh 'sudo apt-get install maven'
-
+                    sh 'apt-get update'
+                    sh 'apt-get install maven'
                 }
                 timeout(time: 20, unit: 'MINUTES') {
                     echo 'Step 2 timout'
