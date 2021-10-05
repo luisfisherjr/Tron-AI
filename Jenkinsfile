@@ -1,5 +1,5 @@
 pipeline {
-    agent { docker { image 'maven:3.6.3-jdk-11-slim' } }
+    agent any
     stages {
         stage('Test') {
             steps {
@@ -7,6 +7,7 @@ pipeline {
                     echo 'Step 1 retry'
                     sh 'java -version'
                     sh 'javac -version'
+                    sh 'sudo apt-get install maven'
 
                 }
                 timeout(time: 20, unit: 'MINUTES') {
