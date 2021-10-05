@@ -12,7 +12,7 @@ pipeline {
                     sh 'javac -version'
 
                 }
-                timout(time:10, units:minutes) {
+                timout(time:10, units:'minutes') {
                     echo 'Step 2 timout'
                     sh 'mvn --version'
                     sh 'sleep 9m'
